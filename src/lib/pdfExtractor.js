@@ -1,8 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
-// Our own worker entry (not pdfjs's raw worker file) — it applies a
-// polyfill inside the worker's global scope before pdf.js runs. See
-// pdfWorkerEntry.js for why this indirection is needed.
-import pdfjsWorkerUrl from './pdfWorkerEntry.js?worker&url';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { recognizeText } from './ocrExtractor';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
@@ -18,11 +15,42 @@ const MIN_CHARS_PER_PAGE_FOR_TEXT_LAYER = 40;
  * (no usable text layer) are rendered to a canvas and passed through OCR,
  * so a mixed or fully-scanned PDF still produces usable text.
  *
+ * pdf.js normally offloads parsing to a Web Worker. Two distinct things can
+ * go wrong on some mobile/embedded browsers, handled two different ways:
+ *
+ *  1. The Worker fails to even start — pdf.js has its own built-in
+ *     fallback for this (transparent to us), which is why `workerSrc`
+ *     points directly at pdf.js's own file rather than a custom wrapper:
+ *     that fallback works by dynamically importing this exact file for its
+ *     exports, and wrapping it in a way Vite treats as "worker-only"
+ *     output strips those exports, silently breaking the fallback.
+ *  2. The Worker starts fine but fails partway through parsing a specific
+ *     document. pdf.js's built-in fallback only covers case 1, so this is
+ *     handled here: on any failure, retry once on the main thread by
+ *     directly registering the message handler pdf.js looks for.
+ *
  * @param {File} file
  * @param {{ onStage?: (label: string) => void, onProgress?: (info: object) => void }} [callbacks]
  */
 export async function extractPdfText(file, { onStage, onProgress } = {}) {
   const arrayBuffer = await file.arrayBuffer();
+
+  try {
+    return await extractWithPdfjs(arrayBuffer, { onStage, onProgress });
+  } catch (err) {
+    console.warn('PDF parsing failed, retrying on the main thread:', err);
+    if (!globalThis.pdfjsWorker) {
+      const workerModule = await import('pdfjs-dist/build/pdf.worker.mjs');
+      globalThis.pdfjsWorker = { WorkerMessageHandler: workerModule.WorkerMessageHandler };
+    }
+    // A fresh ArrayBuffer is required — pdf.js detaches the first one once
+    // handed off, even on a failed attempt.
+    const retryBuffer = await file.arrayBuffer();
+    return extractWithPdfjs(retryBuffer, { onStage, onProgress });
+  }
+}
+
+async function extractWithPdfjs(arrayBuffer, { onStage, onProgress }) {
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const numPages = pdf.numPages;
 
