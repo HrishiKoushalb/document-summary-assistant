@@ -52,7 +52,7 @@ export default function App() {
         )}
 
         {status === 'error' && (
-          <ErrorBanner message={error?.message} onRetry={reset} />
+          <ErrorBanner message={error?.message} detail={error?.detail} onRetry={reset} />
         )}
 
         {status === 'done' && result && (

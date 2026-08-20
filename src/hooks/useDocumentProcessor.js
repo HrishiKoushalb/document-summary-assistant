@@ -37,6 +37,18 @@ function isDynamicImportNetworkError(err) {
   );
 }
 
+// Turns a caught error into a short, human-readable technical line — shown
+// in the UI behind a "Show technical details" toggle (see ErrorBanner).
+// Without this, diagnosing a failure on a device without a devtools
+// connection (most phones) means guessing blind; with it, a screenshot of
+// the error screen is enough to see exactly what went wrong.
+function describeError(err) {
+  if (!err) return 'Unknown error';
+  const name = err.name || 'Error';
+  const message = err.message || String(err);
+  return `${name}: ${message}`;
+}
+
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB — generous for a client-side demo
 const ACCEPTED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
@@ -85,7 +97,11 @@ export function useDocumentProcessor() {
     } catch (err) {
       console.error(err);
       setStatus('error');
-      setError({ code: 'NO_TEXT', message: ERROR_MESSAGES.NO_TEXT });
+      setError({
+        code: 'NO_TEXT',
+        message: ERROR_MESSAGES.NO_TEXT,
+        detail: describeError(err),
+      });
     }
   }, []);
 
@@ -155,10 +171,11 @@ export function useDocumentProcessor() {
     } catch (err) {
       console.error(err);
       setStatus('error');
+      const detail = describeError(err);
       if (isDynamicImportNetworkError(err)) {
-        setError({ code: 'NETWORK_ERROR', message: ERROR_MESSAGES.NETWORK_ERROR });
+        setError({ code: 'NETWORK_ERROR', message: ERROR_MESSAGES.NETWORK_ERROR, detail });
       } else {
-        setError({ code: 'EXTRACTION_FAILED', message: ERROR_MESSAGES.EXTRACTION_FAILED });
+        setError({ code: 'EXTRACTION_FAILED', message: ERROR_MESSAGES.EXTRACTION_FAILED, detail });
       }
     }
   }, [length, runSummary]);

@@ -1,6 +1,9 @@
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, ChevronDown, RotateCcw } from 'lucide-react';
 
-export default function ErrorBanner({ message, onRetry }) {
+export default function ErrorBanner({ message, detail, onRetry }) {
+  const [showDetail, setShowDetail] = useState(false);
+
   return (
     <div className="w-full rounded-2xl border border-error/30 bg-error-soft px-6 py-10 text-center rise-in">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-error/30 text-error">
@@ -15,6 +18,31 @@ export default function ErrorBanner({ message, onRetry }) {
       >
         <RotateCcw size={15} /> Try another file
       </button>
+
+      {detail && (
+        <div className="mx-auto mt-5 max-w-sm text-left">
+          <button
+            type="button"
+            onClick={() => setShowDetail((v) => !v)}
+            className="mx-auto flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide text-text-faint hover:text-text-muted"
+          >
+            <ChevronDown size={12} className={`transition-transform ${showDetail ? 'rotate-180' : ''}`} />
+            Show technical details
+          </button>
+          {showDetail && (
+            <div className="mt-2 rounded-lg border border-error/20 bg-surface px-3 py-2.5">
+              <p className="break-words font-mono text-[11px] leading-relaxed text-text-muted">
+                {detail}
+              </p>
+              {typeof navigator !== 'undefined' && (
+                <p className="mt-1.5 break-words font-mono text-[10px] leading-relaxed text-text-faint">
+                  {navigator.userAgent}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
