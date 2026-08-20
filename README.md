@@ -215,6 +215,18 @@ so any static host works. Two easy options:
 
 Either way, no environment variables or secrets are required.
 
+## A note on the brief's "Improvement Suggestions" item
+
+The original assignment brief numbers its required features 1 through 10,
+but items 5 through 8 are missing from the document — the numbering jumps
+straight from **"4. Improvement Suggestions"** (with no detail underneath
+it) to **"9. UI/UX."** Rather than silently skip it, here's how it's
+addressed: since no specific feature was described, "improvement
+suggestions" is treated as documentation deliverable — see
+[What I'd do with more time](#what-id-do-with-more-time) below — rather
+than an in-app feature. If a specific feature was intended, worth
+clarifying with whoever issued the brief.
+
 ## Known limitations
 
 - Extractive summaries can read slightly less "smooth" than an

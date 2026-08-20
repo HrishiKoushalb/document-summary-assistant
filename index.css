@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- Color tokens ----
+     A single warm, light "paper" surface throughout — deliberately not the
+     cream+terracotta or dark+neon-accent looks that read as templated.
+     The accent is a genuine highlighter-pen gold, not a saturated brand color. */
+  --color-bg: #edeee6;            /* page background — soft sage-warm paper */
+  --color-surface: #f8f8f3;       /* card surface, a touch lighter than the page */
+  --color-surface-well: #e3e3d7;  /* recessed surface (extracted-text box) */
+
+  --color-border: #d5d4c5;
+  --color-border-soft: #e0dfd1;
+
+  --color-text: #211f1a;          /* primary ink */
+  --color-text-muted: #6e6c61;    /* secondary ink */
+  --color-text-faint: #9a9787;
+
+  --color-accent: #c68a2e;        /* highlighter gold */
+  --color-accent-deep: #8a5f1f;   /* pressed / text-on-accent */
+  --color-accent-soft: #c68a2e2b; /* translucent highlighter wash */
+
+  --color-error: #a84732;
+  --color-error-soft: #a847321c;
+
+  /* ---- Type tokens ----
+     Newsreader is built specifically for long-form reading — used for the
+     summary text itself and headings. Inter handles interface chrome.
+     IBM Plex Mono is reserved for small data readouts (word counts, file
+     metadata) where a technical, tabular feel is appropriate. */
+  --font-serif: "Newsreader", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-surface);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-deep);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Subtle paper fiber texture on surfaces */
+  .paper-texture {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(33, 31, 26, 0.035) 1px, transparent 0);
+    background-size: 14px 14px;
+  }
+
+  /* Signature moment: a highlighter pen sweeps across a sentence once, on reveal */
+  @keyframes sweep {
+    0% {
+      background-size: 0% 100%;
+    }
+    100% {
+      background-size: 100% 100%;
+    }
+  }
+
+  .highlight-sweep {
+    background-image: linear-gradient(var(--color-accent-soft), var(--color-accent-soft));
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: 0% 100%;
+    animation: sweep 0.6s ease-out forwards;
+    animation-delay: var(--sweep-delay, 0ms);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .rise-in {
+    animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .highlight-sweep,
+    .rise-in {
+      animation: none !important;
+      background-size: 100% 100%;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+}
