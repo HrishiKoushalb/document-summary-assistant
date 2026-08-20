@@ -8,7 +8,7 @@ and nothing is fetched from a third-party CDN either.
 
 [![CI](https://github.com/HrishiKoushalb/document-summary-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/HrishiKoushalb/document-summary-assistant/actions/workflows/ci.yml)
 
-**Live demo:** [document-summary-assistant-mu-liard.vercel.app](https://document-summary-assistant-mu-liard.vercel.app/)
+   **Live demo:** [hrishi-document-summary-assistant.vercel.app](https://hrishi-document-summary-assistant.vercel.app/)
 
 <p align="center">
   <img src="docs/screenshot-upload.png" alt="Upload screen" width="700" />
