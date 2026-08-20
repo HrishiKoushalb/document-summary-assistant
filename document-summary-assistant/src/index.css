@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- Color tokens ---- */
+  --color-ink: #14182a;          /* app shell background — deep ink navy */
+  --color-ink-soft: #1d2238;     /* elevated panels on ink */
+  --color-ink-line: #2b3050;     /* hairline borders on ink */
+  --color-ink-text: #e9e8de;     /* primary text on ink */
+  --color-ink-text-muted: #9497b0; /* secondary text on ink */
+
+  --color-paper: #f2efe4;        /* physical "paper" card surface */
+  --color-paper-dim: #e8e4d4;    /* recessed paper surface (extracted text well) */
+  --color-paper-text: #1c1b13;   /* primary text on paper */
+  --color-paper-text-muted: #6f6c5a; /* secondary text on paper */
+  --color-paper-line: #d8d3bf;   /* hairline borders on paper */
+
+  --color-mark: #d7ff3d;         /* highlighter accent — the "pen" color */
+  --color-mark-dim: #aad10a;     /* pressed / darker highlighter for text-on-mark */
+  --color-mark-soft: #d7ff3d33;  /* translucent highlighter wash */
+
+  --color-rust: #e8544a;         /* error / warning accent */
+  --color-rust-soft: #e8544a1f;
+
+  /* ---- Type tokens ---- */
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-ink);
+    color: var(--color-ink-text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-mark);
+    color: #14182a;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-mark);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Subtle paper fiber texture on paper surfaces */
+  .paper-texture {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(28, 27, 19, 0.035) 1px, transparent 0);
+    background-size: 14px 14px;
+  }
+
+  /* Signature moment: a highlighter pen sweeps across a sentence once, on reveal */
+  @keyframes sweep {
+    0% {
+      background-size: 0% 100%;
+    }
+    100% {
+      background-size: 100% 100%;
+    }
+  }
+
+  .highlight-sweep {
+    background-image: linear-gradient(var(--color-mark-soft), var(--color-mark-soft));
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: 0% 100%;
+    animation: sweep 0.6s ease-out forwards;
+    animation-delay: var(--sweep-delay, 0ms);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .rise-in {
+    animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .highlight-sweep,
+    .rise-in {
+      animation: none !important;
+      background-size: 100% 100%;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+}
