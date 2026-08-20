@@ -74,7 +74,7 @@ export default function App() {
             nothing is uploaded anywhere.
           </p>
           <p className="text-[0.8rem] text-text-faint">
-            Made by HrishiKoushal
+            Made by HrishiKoushal, built for Unthinkable
           </p>
         </div>
       </footer>
