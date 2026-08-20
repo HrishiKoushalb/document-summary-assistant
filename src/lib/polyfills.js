@@ -50,3 +50,32 @@ if (typeof Uint8Array.fromBase64 !== 'function') {
     return bytes;
   };
 }
+
+
+/**
+ * `Map.prototype.getOrInsertComputed` / `getOrInsert` (the TC39 "Map/Set
+ * upsert" proposal) are used internally by pdf.js's page-rendering code
+ * (triggered when rendering a scanned/image-based PDF page to canvas for
+ * OCR — a different code path than plain text extraction, which is why
+ * this surfaced later than the toHex issue above despite being the same
+ * class of problem). Polyfilled the same way: feature-detected, no-op
+ * where the browser already has native support.
+ */
+if (typeof Map.prototype.getOrInsertComputed !== 'function') {
+  // eslint-disable-next-line no-extend-native
+  Map.prototype.getOrInsertComputed = function getOrInsertComputed(key, callbackfn) {
+    if (this.has(key)) return this.get(key);
+    const value = callbackfn(key);
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof Map.prototype.getOrInsert !== 'function') {
+  // eslint-disable-next-line no-extend-native
+  Map.prototype.getOrInsert = function getOrInsert(key, value) {
+    if (this.has(key)) return this.get(key);
+    this.set(key, value);
+    return value;
+  };
+}
