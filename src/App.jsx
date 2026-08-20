@@ -16,30 +16,26 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-ink-line">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-5 sm:px-8">
+      <header className="border-b border-border">
+        <div className="mx-auto flex max-w-3xl items-center px-5 py-5 sm:px-8">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-mark text-ink">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-surface">
               <Highlighter size={17} strokeWidth={2} />
             </span>
-            <span className="font-display text-[1.05rem] tracking-tight text-ink-text">
+            <span className="font-serif text-[1.05rem] tracking-tight text-text">
               Document Summary Assistant
             </span>
           </div>
-          <span className="hidden sm:block font-mono text-[11px] uppercase tracking-wider text-ink-text-muted">
-            Runs in your browser
-          </span>
         </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-10 sm:px-8 sm:py-16">
         {status === 'idle' && (
           <div className="rise-in">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-mark">Upload · Extract · Summarize</p>
-            <h1 className="mt-3 font-display text-3xl sm:text-4xl leading-[1.1] text-ink-text">
-              Read less.<br />Know more.
+            <h1 className="font-serif text-3xl sm:text-4xl leading-[1.15] text-text">
+              Read less. Know more.
             </h1>
-            <p className="mt-4 max-w-md text-[0.95rem] leading-relaxed text-ink-text-muted">
+            <p className="mt-4 max-w-md text-[0.95rem] leading-relaxed text-text-muted">
               Drop in a PDF or a scanned image. It reads the pages — running OCR
               automatically wherever a page has no text layer — then ranks and
               highlights the sentences that carry the document.
@@ -71,11 +67,11 @@ export default function App() {
         )}
       </main>
 
-      <footer className="border-t border-ink-line">
+      <footer className="border-t border-border">
         <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8">
-          <p className="font-mono text-[11px] text-ink-text-muted">
-            Text extraction, OCR, and summarization all run locally in your browser —
-            your documents are never uploaded to a server.
+          <p className="text-[0.8rem] text-text-faint">
+            Text extraction, OCR, and summarization all happen on your own device —
+            nothing is uploaded anywhere.
           </p>
         </div>
       </footer>

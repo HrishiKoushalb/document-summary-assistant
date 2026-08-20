@@ -9,7 +9,7 @@ export default function LengthControl({ value, onChange, disabled }) {
     <div
       role="radiogroup"
       aria-label="Summary length"
-      className="inline-flex rounded-full border border-ink-line bg-ink p-1 font-mono text-xs sm:text-sm"
+      className="inline-flex rounded-full border border-border bg-surface p-1 font-mono text-xs sm:text-sm"
     >
       {OPTIONS.map((opt) => {
         const active = value === opt.id;
@@ -24,8 +24,8 @@ export default function LengthControl({ value, onChange, disabled }) {
             className={[
               'rounded-full px-4 py-1.5 uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-50',
               active
-                ? 'bg-mark text-ink font-semibold'
-                : 'text-ink-text-muted hover:text-ink-text',
+                ? 'bg-accent text-surface font-semibold'
+                : 'text-text-muted hover:text-text',
             ].join(' ')}
           >
             {opt.label}
