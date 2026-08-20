@@ -68,10 +68,13 @@ export default function App() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8">
+        <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 space-y-1.5">
           <p className="text-[0.8rem] text-text-faint">
             Text extraction, OCR, and summarization all happen on your own device —
             nothing is uploaded anywhere.
+          </p>
+          <p className="text-[0.8rem] text-text-faint">
+            Made by HrishiKoushal
           </p>
         </div>
       </footer>
