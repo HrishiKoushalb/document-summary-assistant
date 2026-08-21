@@ -1,13 +1,12 @@
-// The "legacy" build (rather than pdf.js's default modern build) is used
-// deliberately: pdf.js's modern build calls very new JS built-ins (from
-// still-fresh TC39 proposals - e.g. Uint8Array to/from base64/hex,
-// Map/Set upsert, Promise.withResolvers) that ship in Chrome/V8 well before
-// Safari/JavaScriptCore, and real iPhone testing hit exactly that gap
-// (working fine on desktop/Android Chrome, throwing on iOS Safari). The
-// legacy build - pdf.js's own upstream-maintained target for older/slower
-// browsers - bundles feature-detected polyfills for this whole class of
-// built-in, rather than us chasing each missing API one at a time.
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+// NOTE: previously switched to pdf.js's "legacy" build here on the theory
+// that Safari lacked a newer JS built-in pdf.js's modern build relies on.
+// That didn't clear the crash on real device (still failing, on a device
+// reporting Safari 26.6 - too new for that theory to hold), and the legacy
+// build drags in a large webpack-bundled core-js polyfill layer of its own,
+// which is a plausible new failure source in its own right. Reverted to
+// the modern build to remove that variable while the real cause gets
+// diagnosed from an unminified trace (see vite.config.js).
+import * as pdfjsLib from 'pdfjs-dist';
 import { recognizeText } from './ocrExtractor';
 
 // pdf.js normally offloads PDF parsing to a separate Web Worker thread.
@@ -29,7 +28,7 @@ import { recognizeText } from './ocrExtractor';
 let mainThreadWorkerReady = null;
 function ensureMainThreadPdfWorker() {
   if (!mainThreadWorkerReady) {
-    mainThreadWorkerReady = import('pdfjs-dist/legacy/build/pdf.worker.mjs').then((workerModule) => {
+    mainThreadWorkerReady = import('pdfjs-dist/build/pdf.worker.mjs').then((workerModule) => {
       globalThis.pdfjsWorker = { WorkerMessageHandler: workerModule.WorkerMessageHandler };
     });
   }
