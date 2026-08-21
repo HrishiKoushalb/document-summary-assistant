@@ -1,4 +1,13 @@
-import * as pdfjsLib from 'pdfjs-dist';
+// The "legacy" build (rather than pdf.js's default modern build) is used
+// deliberately: pdf.js's modern build calls very new JS built-ins (from
+// still-fresh TC39 proposals - e.g. Uint8Array to/from base64/hex,
+// Map/Set upsert, Promise.withResolvers) that ship in Chrome/V8 well before
+// Safari/JavaScriptCore, and real iPhone testing hit exactly that gap
+// (working fine on desktop/Android Chrome, throwing on iOS Safari). The
+// legacy build - pdf.js's own upstream-maintained target for older/slower
+// browsers - bundles feature-detected polyfills for this whole class of
+// built-in, rather than us chasing each missing API one at a time.
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { recognizeText } from './ocrExtractor';
 
 // pdf.js normally offloads PDF parsing to a separate Web Worker thread.
@@ -20,7 +29,7 @@ import { recognizeText } from './ocrExtractor';
 let mainThreadWorkerReady = null;
 function ensureMainThreadPdfWorker() {
   if (!mainThreadWorkerReady) {
-    mainThreadWorkerReady = import('pdfjs-dist/build/pdf.worker.mjs').then((workerModule) => {
+    mainThreadWorkerReady = import('pdfjs-dist/legacy/build/pdf.worker.mjs').then((workerModule) => {
       globalThis.pdfjsWorker = { WorkerMessageHandler: workerModule.WorkerMessageHandler };
     });
   }
