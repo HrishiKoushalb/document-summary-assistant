@@ -8,7 +8,7 @@ import { recognizeText } from './ocrExtractor';
 // reproduced in desktop or automated testing. Rather than keep chasing
 // individual failure modes one at a time, parsing runs directly on the
 // main thread, unconditionally, for every device. That means there's no
-// Worker involved at all — no module-worker requirement, no per-browser
+// Worker involved at all - no module-worker requirement, no per-browser
 // Worker quirks, nothing that can behave differently by device. The
 // tradeoff is a small amount of parsing speed (imperceptible for a
 // typical few-page document, since the UI already shows a progress state
@@ -28,8 +28,8 @@ function ensureMainThreadPdfWorker() {
 }
 
 // Below this many characters, a page's embedded text layer is treated as
-// effectively empty — almost always a scanned/photographed page inside an
-// otherwise-digital PDF — and we fall back to rendering + OCR for that page.
+// effectively empty - almost always a scanned/photographed page inside an
+// otherwise-digital PDF - and we fall back to rendering + OCR for that page.
 const MIN_CHARS_PER_PAGE_FOR_TEXT_LAYER = 40;
 
 /**
@@ -38,4 +38,58 @@ const MIN_CHARS_PER_PAGE_FOR_TEXT_LAYER = 40;
  * (no usable text layer) are rendered to a canvas and passed through OCR,
  * so a mixed or fully-scanned PDF still produces usable text.
  *
- *
+ * @param {File} file
+ * @param {{ onStage?: (label: string) => void, onProgress?: (info: object) => void }} [callbacks]
+ */
+export async function extractPdfText(file, { onStage, onProgress } = {}) {
+  await ensureMainThreadPdfWorker();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const numPages = pdf.numPages;
+
+  const pageTexts = [];
+  let scannedPageCount = 0;
+
+  for (let pageNum = 1; pageNum <= numPages; pageNum += 1) {
+    const page = await pdf.getPage(pageNum);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (pageText.length >= MIN_CHARS_PER_PAGE_FOR_TEXT_LAYER) {
+      onStage?.(`Reading page ${pageNum} of ${numPages}`);
+      pageTexts.push(pageText);
+    } else {
+      scannedPageCount += 1;
+      onStage?.(`Page ${pageNum} of ${numPages} looks scanned - running OCR`);
+      const canvas = await renderPageToCanvas(page);
+      const ocrText = await recognizeText(canvas, (p) => {
+        onProgress?.({ page: pageNum, totalPages: numPages, ocrProgress: p });
+      });
+      pageTexts.push(ocrText.trim());
+      canvas.width = 0;
+      canvas.height = 0; // release canvas memory promptly
+    }
+
+    onProgress?.({ page: pageNum, totalPages: numPages, ocrProgress: null });
+  }
+
+  return {
+    text: pageTexts.join('\n\n').trim(),
+    numPages,
+    scannedPageCount,
+  };
+}
+
+async function renderPageToCanvas(page, scale = 2) {
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const context = canvas.getContext('2d');
+  await page.render({ canvasContext: context, viewport }).promise;
+  return canvas;
+}
