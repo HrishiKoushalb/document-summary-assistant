@@ -1,18 +1,9 @@
-/**
- * polyfills.js
- *
- * pdfjs-dist (v6) uses very new JavaScript features that not all browsers
- * support yet, which throw confusing errors deep inside PDF parsing if
- * missing. These are feature-detected and polyfilled here - no-op when
- * the browser already has native support.
- *
- * 1. Uint8Array.prototype.toHex / fromBase64 - used during basic PDF
- *    parsing (part of the TC39 "Uint8Array to/from base64/hex" proposal).
- * 2. Map.prototype.getOrInsertComputed / getOrInsert - used internally by
- *    pdf.js's page-rendering code specifically, which only runs when
- *    rendering a scanned/image-based PDF page to canvas for OCR (part of
- *    the TC39 "Map/Set upsert" proposal).
- */
+// pdfjs-dist (v6) calls a few very new JS built-ins that older browsers
+// throw confusing errors on. Feature-detected polyfills, no-op where the
+// browser already has native support:
+//  - Uint8Array.prototype.toHex/fromHex/toBase64/fromBase64 (TC39
+//    "Uint8Array to/from base64/hex")
+//  - Map.prototype.getOrInsertComputed/getOrInsert (TC39 "Map/Set upsert")
 const HEX_CHARS = '0123456789abcdef';
 
 if (typeof Uint8Array.prototype.toHex !== 'function') {

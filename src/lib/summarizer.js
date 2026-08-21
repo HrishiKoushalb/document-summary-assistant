@@ -1,23 +1,7 @@
-/**
- * summarizer.js
- *
- * A self-contained, dependency-free implementation of TextRank
- * (Mihalcea & Tarau, 2004) — an unsupervised, graph-based extractive
- * summarization algorithm.
- *
- * Why extractive + TextRank instead of an LLM/API call?
- *  - Runs entirely in the browser: documents never leave the user's device
- *    (meaningful for anyone summarizing sensitive/private documents).
- *  - No API keys, no rate limits, no per-request cost, no "service is down"
- *    failure mode — the deployed demo works exactly the same on request 1
- *    and request 10,000.
- *  - Deterministic and fast (<100ms for a multi-page document).
- *
- * The tradeoff is honestly documented in the README: this produces a
- * best-sentence digest rather than a fluently rewritten abstract. For a
- * document tool, we judged faithfulness (no hallucinated content) and
- * reliability to be the higher priority.
- */
+// Dependency-free TextRank (Mihalcea & Tarau, 2004) - extractive
+// summarization, runs entirely client-side. No API calls, no keys, no
+// hallucinated content; the tradeoff (see README) is a best-sentence
+// digest rather than a fluently rewritten abstract.
 
 const STOPWORDS = new Set(
   (

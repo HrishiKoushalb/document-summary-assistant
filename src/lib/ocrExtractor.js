@@ -2,12 +2,9 @@ import { createWorker } from 'tesseract.js';
 
 let workerPromise = null;
 
-// Tesseract.js pulls three things at runtime by default: its worker script,
-// the WASM OCR engine, and the English language model — all from public
-// CDNs (jsdelivr). That's an unnecessary external dependency for a
-// "production-quality" app (corporate networks, ad-blockers, or CDN outages
-// can all break it silently). Instead, all three are bundled locally under
-// public/tesseract/ and served from the same origin as the app.
+// Tesseract.js pulls its worker script, WASM engine, and language model
+// from a CDN by default - bundled locally instead so a corporate proxy
+// or ad-blocker can't silently break OCR.
 const WORKER_PATH = '/tesseract/worker.min.js';
 const CORE_PATH = '/tesseract/tesseract-core-simd-lstm.wasm.js';
 const LANG_PATH = '/tesseract';

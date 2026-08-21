@@ -1,17 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { summarize } from '../lib/summarizer';
 
-// pdfjs-dist and tesseract.js are both sizeable libraries (PDF parsing +
-// a WASM OCR engine). They're dynamically imported so the initial page
-// load only ships React and the UI — the ~2MB OCR/PDF machinery is fetched
-// on demand, the moment someone actually uploads a file.
-//
-// Because that fetch happens on-demand rather than at page load, a dropped
-// connection at exactly the wrong moment (WiFi reconnecting, a VPN toggling)
-// can make the browser fail to download that chunk. `importWithRetry` gives
-// that a couple of automatic retries before giving up, and the error is
-// reported distinctly from "this file is corrupt" so the person knows to
-// just try again rather than assume their file is broken.
+// pdfjs-dist and tesseract.js are dynamically imported (only fetched once
+// someone actually uploads a file) so the initial page load stays light.
+// That fetch can fail on a flaky connection, so retry a couple times
+// before giving up and reporting it as a network error, not a bad file.
 async function importWithRetry(importFn, retries = 2, delayMs = 700) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
@@ -37,11 +30,8 @@ function isDynamicImportNetworkError(err) {
   );
 }
 
-// Turns a caught error into a short, human-readable technical line — shown
-// in the UI behind a "Show technical details" toggle (see ErrorBanner).
-// Without this, diagnosing a failure on a device without a devtools
-// connection (most phones) means guessing blind; with it, a screenshot of
-// the error screen is enough to see exactly what went wrong.
+// Shown behind "Show technical details" in ErrorBanner - lets a phone
+// screenshot double as a bug report since there's no devtools to check.
 function describeError(err) {
   if (!err) return 'Unknown error';
   const name = err.name || 'Error';
