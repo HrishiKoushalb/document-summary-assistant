@@ -60,9 +60,9 @@ function tokenize(sentence) {
 }
 
 /**
- * Classic TextRank sentence similarity: normalized word overlap. Also
- * reused for query relevance (Feature 1) - "how much does sentence A
- * overlap with word set B" is the same question either way.
+ * Classic TextRank sentence similarity: normalized word overlap. Used for
+ * sentence-to-sentence centrality (unchanged, exact-match only - this is
+ * proven behavior, not touched by the query-matching fix below).
  */
 function similarity(wordsA, wordsB) {
   if (wordsA.length === 0 || wordsB.length === 0) return 0;
@@ -70,6 +70,40 @@ function similarity(wordsA, wordsB) {
   let overlap = 0;
   for (const w of wordsA) if (setB.has(w)) overlap += 1;
   const denom = Math.log(wordsA.length + 1) + Math.log(wordsB.length + 1);
+  return denom === 0 ? 0 : overlap / denom;
+}
+
+/**
+ * Looser word matching used only for query relevance (Feature 1) - a real
+ * user query almost never shares the exact word form used in the document
+ * ("science" vs "scientific", "govern" vs "government", "print" vs
+ * "printing"). Exact-match overlap (the same logic as sentence-to-sentence
+ * similarity above) misses essentially all of these, which made the
+ * feature feel like it did nothing for realistic queries. A shared 5+
+ * character prefix is a cheap, dependency-free way to catch most word-form
+ * variants without a full stemmer.
+ *
+ * This deliberately does NOT catch genuine synonyms with a different root
+ * (e.g. "religion" vs "Reformation") - that needs a thesaurus/semantic
+ * model, which this project intentionally avoids (see README's "Why no
+ * AI/LLM API?"). Documented as a known limitation, not silently pretended
+ * away.
+ */
+function wordsRelated(a, b) {
+  if (a === b) return true;
+  const minLen = Math.min(a.length, b.length);
+  if (minLen < 4) return false;
+  const prefixLen = Math.min(minLen, 5);
+  return a.slice(0, prefixLen) === b.slice(0, prefixLen);
+}
+
+function queryRelevanceScore(sentenceWords, queryWords) {
+  if (sentenceWords.length === 0 || queryWords.length === 0) return 0;
+  let overlap = 0;
+  for (const qw of queryWords) {
+    if (sentenceWords.some((sw) => wordsRelated(sw, qw))) overlap += 1;
+  }
+  const denom = Math.log(sentenceWords.length + 1) + Math.log(queryWords.length + 1);
   return denom === 0 ? 0 : overlap / denom;
 }
 
@@ -198,7 +232,7 @@ export function summarize(text, length = 'medium', query = '') {
   // happens to have bigger numbers dominate regardless of the weight).
   let rankingScores = scores;
   if (hasQuery) {
-    const queryRelevance = wordSets.map((words) => similarity(words, queryWords));
+    const queryRelevance = wordSets.map((words) => queryRelevanceScore(words, queryWords));
     const normBase = normalize(scores);
     const normQuery = normalize(queryRelevance);
     rankingScores = normBase.map((b, i) => (1 - QUERY_WEIGHT) * b + QUERY_WEIGHT * normQuery[i]);

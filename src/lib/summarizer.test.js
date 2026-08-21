@@ -180,4 +180,17 @@ describe('summarize with a query', () => {
     const stopwordsOnly = summarize(longText, 'short', 'the and of a to');
     expect(stopwordsOnly).toEqual(base);
   });
+
+  it('matches realistic queries that use a different word form than the source text', () => {
+    // This is the case that actually matters for a real user: nobody types
+    // the document's exact vocabulary. "science" (not "Scientific"),
+    // "newspaper" (singular; source says "Newspapers") must still surface
+    // the relevant sentence, or the feature is useless in practice even if
+    // exact-word-match tests pass.
+    const scienceQuery = summarize(longText, 'medium', 'science');
+    expect(scienceQuery.summary).toMatch(/scientific/i);
+
+    const newspaperQuery = summarize(longText, 'medium', 'newspaper');
+    expect(newspaperQuery.summary).toMatch(/newspapers/i);
+  });
 });
