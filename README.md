@@ -8,7 +8,7 @@ and nothing is fetched from a third-party CDN either.
 
 [![CI](https://github.com/HrishiKoushalb/document-summary-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/HrishiKoushalb/document-summary-assistant/actions/workflows/ci.yml)
 
-   **Live demo:** [hrishi-document-summary-assistant.vercel.app](https://hrishi-document-summary-assistant.vercel.app/)
+**Live demo:** [hrishi-document-summary-assistant.vercel.app](https://hrishi-document-summary-assistant.vercel.app/)
 
 <p align="center">
   <img src="docs/screenshot-upload.png" alt="Upload screen" width="700" />
@@ -54,48 +54,6 @@ and nothing is fetched from a third-party CDN either.
 - **Automated tests** — unit tests for the summarization engine (`npm test`),
   run on every push via GitHub Actions
 
-## How this maps to the stated evaluation criteria
-
-The brief says this will be judged on problem-solving approach, code
-quality, working functionality, and documentation. Rather than leave that
-to inference, here's where each one is demonstrated directly:
-
-**Problem-solving approach**
-- Deliberately skipped external AI/LLM APIs — see
-  [Why no AI/LLM API?](#why-no-aillm-api) for the reasoning, not just the
-  choice
-- Handled the PDF-vs-scanned-image ambiguity with automatic per-page OCR
-  fallback rather than a manual toggle the user has to figure out
-- Found and fixed a real cross-browser Web Worker compatibility bug
-  through actual testing, not assumption (see
-  [the polyfill note](#a-note-on-polyfillsjs--pdfworkerentryjs))
-- Discovered mid-build that OCR silently depended on three external CDNs
-  and self-hosted all of them instead — see
-  [Fully self-hosted OCR](#fully-self-hosted-ocr-no-cdn-dependency)
-
-**Code quality**
-- 12 automated unit tests on the core algorithm, including edge cases
-  (empty input, non-hallucination checks, length-tier ordering)
-- CI runs the full test suite and a production build on every push
-- Clear separation of concerns: extraction, OCR, and summarization are
-  independent modules, each swappable without touching the others
-- Errors are specific and actionable per failure mode, not one generic
-  catch-all message
-
-**Working functionality**
-- Verified end-to-end on both the PDF-text path and the OCR/image path —
-  locally, and again on the live deployment
-- Handles the edge cases that break most quick demos: empty documents,
-  oversized files, unsupported formats, and a dropped network connection
-  mid-load
-
-**Documentation**
-- This README, including an architecture diagram and real screenshots
-- [`APPROACH.md`](./APPROACH.md) — the required 200-word write-up
-- Code comments that explain *why*, not just what, at the two or three
-  points in the codebase where the reasoning genuinely isn't obvious from
-  the code alone
-
 ## Architecture
 
 ```mermaid
@@ -121,18 +79,16 @@ inside the user's browser — there is no backend and no API layer.
 
 ## Why no AI/LLM API?
 
-The brief explicitly allows using a free-tier AI/ML service, and that was
-seriously considered. I chose a client-side, algorithmic approach
-(TextRank) instead, for a few concrete reasons:
+I went with a client-side, algorithmic approach (TextRank) instead of
+calling a hosted LLM:
 
-1. **Privacy** — documents never leave the user's device. For a "document
-   summarizer," that's a meaningful default, not just a nice-to-have.
+1. **Privacy** — documents never leave the user's device. For a document
+   summarizer, that's a meaningful default, not just a nice-to-have.
 2. **Reliability** — no API keys to manage, no rate limits, no dependency
-   on a third-party service being up. The deployed demo behaves identically
-   on the 1st request and the 10,000th.
-3. **Zero backend** — the whole app is a static site, which makes it
-   trivial to deploy for free and keeps the "no `.env`, no secrets"
-   submission guideline trivially satisfied.
+   on a third-party service being up. The demo behaves identically on the
+   1st request and the 10,000th.
+3. **Zero backend** — the whole app is a static site, trivial to deploy
+   for free with no `.env` or secrets involved.
 
 The tradeoff: this produces an **extractive** summary (the best original
 sentences, verbatim) rather than a fluently rewritten abstract. For a
@@ -157,7 +113,7 @@ of the app, with no runtime fetches to `cdn.jsdelivr.net` or anywhere else.
 - **React 19 + Vite** — pure client-side SPA, no backend
 - **Tailwind CSS v4** — custom design tokens (see `src/index.css`)
 - **[pdfjs-dist](https://www.npmjs.com/package/pdfjs-dist)** — PDF text
-  extraction and page rendering
+  extraction and page rendering, via a real Web Worker
 - **[tesseract.js](https://www.npmjs.com/package/tesseract.js)** — OCR,
   self-hosted (see above)
 - **A from-scratch TextRank implementation** — `src/lib/summarizer.js`,
@@ -183,23 +139,13 @@ src/
     ├── ocrExtractor.js        # tesseract.js wrapper (self-hosted assets)
     ├── summarizer.js          # TextRank implementation
     ├── summarizer.test.js     # unit tests (Vitest)
-    ├── polyfills.js           # Uint8Array.toHex/fromBase64 polyfill (main thread)
-    └── pdfWorkerEntry.js      # custom pdf.js worker entry (polyfills the worker thread too)
+    └── polyfills.js           # feature-detected shims for a couple of very
+                                # new JS built-ins pdf.js relies on
 public/
 └── tesseract/                 # self-hosted OCR worker, WASM core, English model
 .github/workflows/ci.yml       # test + build on every push
 docs/                          # README screenshots
 ```
-
-### A note on `polyfills.js` / `pdfWorkerEntry.js`
-
-`pdfjs-dist` v6 relies on the very new `Uint8Array.prototype.toHex` /
-`fromBase64` methods. They're supported in current browsers, but to avoid a
-confusing crash on anything slightly older, this project feature-detects
-and polyfills them — **in both the main thread and inside pdf.js's own Web
-Worker**, since a Worker has its own independent JS global scope. This is
-the kind of edge case that only shows up under real testing, not code
-review, which is exactly why it's called out here.
 
 ## Testing
 
@@ -236,11 +182,11 @@ npm run preview    # serve the production build locally to sanity-check it
 ## Deploying (free)
 
 The app is a static site (no backend, no environment variables needed),
-so any static host works. Two easy options:
+so any static host works.
 
 ### Option A — Vercel
 
-1. Push this repo to GitHub (see submission guidelines below).
+1. Push this repo to GitHub.
 2. Go to [vercel.com](https://vercel.com), "Add New Project," import the
    repo.
 3. Framework preset: **Vite**. Build command `npm run build`, output
@@ -257,31 +203,18 @@ so any static host works. Two easy options:
 
 Either way, no environment variables or secrets are required.
 
-## A note on the brief's "Improvement Suggestions" item
-
-The original assignment brief numbers its required features 1 through 10,
-but items 5 through 8 are missing from the document — the numbering jumps
-straight from **"4. Improvement Suggestions"** (with no detail underneath
-it) to **"9. UI/UX."** Rather than silently skip it, here's how it's
-addressed: since no specific feature was described, "improvement
-suggestions" is treated as documentation deliverable — see
-[What I'd do with more time](#what-id-do-with-more-time) below — rather
-than an in-app feature. If a specific feature was intended, worth
-clarifying with whoever issued the brief.
-
 ## Known limitations
 
 - Extractive summaries can read slightly less "smooth" than an
   LLM-generated abstract, especially on documents that are themselves
-  bulleted/structured (like this very brief) rather than flowing prose —
-  the algorithm picks the most representative *original* sentences rather
-  than rewriting them.
+  bulleted/structured rather than flowing prose — the algorithm picks the
+  most representative *original* sentences rather than rewriting them.
 - OCR accuracy depends on scan quality, as with any OCR engine.
 - Very large PDFs (dozens of pages, mostly scanned) will take longer,
   since OCR runs per-page.
 - Currently English-only for OCR (additional `@tesseract.js-data`
   language packages can be added the same way `eng` was — see
-  "Self-hosted OCR" above).
+  "Fully self-hosted OCR" above).
 
 ## What I'd do with more time
 
@@ -296,8 +229,3 @@ clarifying with whoever issued the brief.
   of the current unit tests
 - PWA support so the (now fully self-hosted) app works offline after
   first load
-
-## Approach write-up
-
-See [`APPROACH.md`](./APPROACH.md) for the required 200-word summary of
-the approach taken.
