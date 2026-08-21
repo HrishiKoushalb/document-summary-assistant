@@ -39,4 +39,37 @@ if (typeof Uint8Array.fromHex !== 'function') {
 
 if (typeof Uint8Array.prototype.toBase64 !== 'function') {
   // eslint-disable-next-line no-extend-native
-  Uint8Array.prototype.toBase64 =
+  Uint8Array.prototype.toBase64 = function toBase64() {
+    let binary = '';
+    for (let i = 0; i < this.length; i++) binary += String.fromCharCode(this[i]);
+    return btoa(binary);
+  };
+}
+
+if (typeof Uint8Array.fromBase64 !== 'function') {
+  Uint8Array.fromBase64 = function fromBase64(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  };
+}
+
+if (typeof Map.prototype.getOrInsertComputed !== 'function') {
+  // eslint-disable-next-line no-extend-native
+  Map.prototype.getOrInsertComputed = function getOrInsertComputed(key, callbackfn) {
+    if (this.has(key)) return this.get(key);
+    const value = callbackfn(key);
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof Map.prototype.getOrInsert !== 'function') {
+  // eslint-disable-next-line no-extend-native
+  Map.prototype.getOrInsert = function getOrInsert(key, value) {
+    if (this.has(key)) return this.get(key);
+    this.set(key, value);
+    return value;
+  };
+}
