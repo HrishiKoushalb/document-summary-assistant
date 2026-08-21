@@ -45,8 +45,17 @@ and nothing is fetched from a third-party CDN either.
   external API calls**
 - **Adjustable length** — Short / Medium / Long, recomputed instantly
   (no re-extraction needed)
+- **Query-focused summarization** — an optional "Focus on…" field steers
+  which sentences get pulled in, e.g. "pricing" or "security risks" on the
+  same document, recomputed instantly from the cached text
 - **Key points** — the top-ranked sentences, surfaced separately as
   scannable highlights
+- **Ranking transparency** — a "How this was ranked" panel shows every
+  candidate sentence with its score and whether it made the cut, so the
+  algorithm isn't a black box
+- **Installable / offline-capable (PWA)** — after the first visit, the app,
+  the OCR engine, and the language model are all cached locally; it opens
+  and works with no network at all
 - **Loading states & error handling** — clear progress feedback during
   extraction/OCR, and specific error messages for unsupported files,
   oversized files, and documents with no readable text
@@ -66,16 +75,23 @@ flowchart TD
     D -->|No — scanned page| G[Render page to canvas]
     G --> E
     E --> F
-    F --> H[TextRank summarizer]
-    H --> I[Ranked sentences]
+    F --> H[TextRank centrality score per sentence]
+    H --> QM{Query given?}
+    QM -->|Yes| QR[Blend with query-relevance score]
+    QM -->|No| I[Ranked + scored sentences]
+    QR --> I
     I --> J[Summary — top N in reading order]
     I --> K[Key points — top 5 by score]
+    I --> R[Ranking panel — every sentence, scored]
     J --> L[Result view]
     K --> L
+    R --> L
 ```
 
 Everything left of the summarizer runs in the main thread or a Web Worker
-inside the user's browser — there is no backend and no API layer.
+inside the user's browser — there is no backend and no API layer. Changing
+the length or the query re-runs only the summarizer against the already-
+extracted text, not the extraction/OCR step.
 
 ## Why no AI/LLM API?
 
@@ -96,6 +112,27 @@ document-comprehension tool, faithfulness to the source felt like the
 right thing to optimize for. Swapping in a hosted summarization API later
 is a contained change — see `src/lib/summarizer.js`.
 
+## Query-focused summarization and ranking transparency
+
+Plain TextRank answers "what's central to this document?" — useful, but
+not the same question as "what does this document say about X?" The
+optional query field answers the second question by reusing the same
+word-overlap similarity function TextRank already uses for sentence-to-
+sentence comparison, just pointed at the query instead: each sentence
+gets a query-relevance score the same way it gets a centrality score, and
+the two are blended (0.65 toward the query, since typing one is a
+deliberate signal — see the comment above `QUERY_WEIGHT` in
+`summarizer.js` for the full reasoning). An empty query is a no-op: the
+ranking math takes the same path as before this feature existed, which
+is also what the "byte-identical with no query" test in
+`summarizer.test.js` checks for directly.
+
+The ranking panel exists because an extractive summarizer's whole pitch
+is "faithful to the source" — but that's only a trustworthy claim if you
+can see the ranking that produced it. Every candidate sentence and its
+score gets returned from `summarize()`, not just the ones that made the
+cut.
+
 ## Fully self-hosted OCR (no CDN dependency)
 
 By default, Tesseract.js fetches its worker script, its WASM engine, and
@@ -108,6 +145,29 @@ This project bundles all three locally under `public/tesseract/`
 `src/lib/ocrExtractor.js`), so OCR works from the same origin as the rest
 of the app, with no runtime fetches to `cdn.jsdelivr.net` or anywhere else.
 
+The same applied to the fonts: they were loading from Google Fonts at
+runtime (a network dependency that's easy to miss, since it's just two
+`<link>` tags), which would have made "works offline" a lie the moment
+the browser needed a font it hadn't cached yet. `src/fonts.css` self-hosts
+Newsreader, Inter, and IBM Plex Mono (latin + latin-ext subsets only —
+the app is English-only, no need for the cyrillic/greek/vietnamese glyph
+sets Google Fonts ships by default) under `public/fonts/`.
+
+## Installable and offline (PWA)
+
+With every runtime dependency already self-hosted, making the app a real
+PWA was mostly wiring, not a new architecture: [`vite-plugin-pwa`](https://vite-pwa-org.netlify.app/)
+generates the manifest and service worker at build time (a hand-rolled
+service worker is easy to get subtly wrong on cache invalidation, so this
+project doesn't try). The service worker precaches the entire app shell
+*and* the self-hosted OCR engine, language model, and fonts — not just
+HTML/CSS/JS — since those are exactly what would otherwise force a
+network request the first time someone opens the app offline. Verified
+directly, not just assumed from the config: the manifest and both icon
+sizes resolve, the service worker registers and takes control of the
+page, and — with the browser fully offline — the app not only loads but
+successfully extracts and summarizes a real PDF.
+
 ## Tech stack
 
 - **React 19 + Vite** — pure client-side SPA, no backend
@@ -118,6 +178,8 @@ of the app, with no runtime fetches to `cdn.jsdelivr.net` or anywhere else.
   self-hosted (see above)
 - **A from-scratch TextRank implementation** — `src/lib/summarizer.js`,
   no summarization library or API
+- **[vite-plugin-pwa](https://vite-pwa-org.netlify.app/)** — manifest +
+  service worker generation for offline/installable support
 - **[Vitest](https://vitest.dev/)** — unit tests for the summarizer
 - **GitHub Actions** — CI runs `npm test` and `npm run build` on every push
 
@@ -126,23 +188,27 @@ of the app, with no runtime fetches to `cdn.jsdelivr.net` or anywhere else.
 ```
 src/
 ├── App.jsx                    # top-level layout / state routing
+├── fonts.css                  # self-hosted @font-face declarations
 ├── components/
 │   ├── FileUpload.jsx         # drag-and-drop + file picker
 │   ├── LengthControl.jsx      # Short/Medium/Long segmented control
+│   ├── QueryControl.jsx       # "Focus on…" query input (debounced)
 │   ├── ProcessingStatus.jsx   # loading state + progress bar
 │   ├── ErrorBanner.jsx        # error state + retry
-│   └── ResultView.jsx         # summary, key points, extracted text
+│   └── ResultView.jsx         # summary, key points, ranking panel, extracted text
 ├── hooks/
 │   └── useDocumentProcessor.js # orchestrates extract -> summarize pipeline
 └── lib/
     ├── pdfExtractor.js        # pdf.js text extraction + OCR fallback
     ├── ocrExtractor.js        # tesseract.js wrapper (self-hosted assets)
-    ├── summarizer.js          # TextRank implementation
+    ├── summarizer.js          # TextRank + query-relevance blending
     ├── summarizer.test.js     # unit tests (Vitest)
     └── polyfills.js           # feature-detected shims for a couple of very
                                 # new JS built-ins pdf.js relies on
 public/
-└── tesseract/                 # self-hosted OCR worker, WASM core, English model
+├── tesseract/                 # self-hosted OCR worker, WASM core, English model
+├── fonts/                     # self-hosted Newsreader/Inter/IBM Plex Mono
+└── icons/                     # PWA manifest icons (192px, 512px)
 .github/workflows/ci.yml       # test + build on every push
 docs/                          # README screenshots
 ```
@@ -158,7 +224,9 @@ The summarizer is tested for: sentence splitting (including abbreviations,
 decimals, ellipses), the empty-input edge case, short-document passthrough,
 length-tier ordering (short ≤ medium ≤ long), non-hallucination (every
 summary sentence is verified to exist verbatim in the source), the key
-points cap, and the default-length behavior.
+points cap, the default-length behavior, the ranking panel's shape/order,
+and the query feature — including the strict requirement that an empty
+query produces byte-identical output to not passing one at all.
 
 CI (`.github/workflows/ci.yml`) runs the full test suite and a production
 build on every push to `main` and on every pull request.
@@ -227,5 +295,6 @@ Either way, no environment variables or secrets are required.
   back to TextRank on failure
 - Visual regression tests (e.g., Playwright + screenshot diffing) on top
   of the current unit tests
-- PWA support so the (now fully self-hosted) app works offline after
-  first load
+- A maskable PWA icon variant (the current icons work for the install
+  criteria as-is, but a maskable version looks better on Android's
+  adaptive-icon shapes)
