@@ -8,8 +8,8 @@ import { useDocumentProcessor } from './hooks/useDocumentProcessor';
 export default function App() {
   const {
     status, stage, progress, error, fileMeta,
-    extractedText, length, result,
-    processFile, setLength, reset,
+    extractedText, length, query, result,
+    processFile, setLength, setQuery, reset,
   } = useDocumentProcessor();
 
   const isBusy = status === 'extracting' || status === 'summarizing';
@@ -61,6 +61,8 @@ export default function App() {
             result={result}
             length={length}
             onLengthChange={setLength}
+            query={query}
+            onQueryChange={setQuery}
             extractedText={extractedText}
             onReset={reset}
           />

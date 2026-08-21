@@ -74,13 +74,14 @@ export function useDocumentProcessor() {
   const [fileMeta, setFileMeta] = useState(null);
   const [extractedText, setExtractedText] = useState('');
   const [length, setLengthState] = useState('medium');
+  const [query, setQueryState] = useState('');
   const [result, setResult] = useState(null);
 
   const extractedTextRef = useRef('');
 
-  const runSummary = useCallback((text, len) => {
+  const runSummary = useCallback((text, len, q) => {
     try {
-      const summaryResult = summarize(text, len);
+      const summaryResult = summarize(text, len, q);
       setResult(summaryResult);
       setStatus('done');
       setStage('');
@@ -98,15 +99,23 @@ export function useDocumentProcessor() {
   const setLength = useCallback((len) => {
     setLengthState(len);
     if (extractedTextRef.current) {
-      runSummary(extractedTextRef.current, len);
+      runSummary(extractedTextRef.current, len, query);
     }
-  }, [runSummary]);
+  }, [runSummary, query]);
+
+  const setQuery = useCallback((q) => {
+    setQueryState(q);
+    if (extractedTextRef.current) {
+      runSummary(extractedTextRef.current, length, q);
+    }
+  }, [runSummary, length]);
 
   const processFile = useCallback(async (file) => {
     setError(null);
     setResult(null);
     setExtractedText('');
     extractedTextRef.current = '';
+    setQueryState('');
     setProgress(0);
 
     const validationError = validateFile(file);
@@ -157,7 +166,9 @@ export function useDocumentProcessor() {
       // Yield a frame so the "summarizing" UI state is visible even though
       // TextRank itself typically completes in well under 100ms.
       await new Promise((resolve) => setTimeout(resolve, 150));
-      runSummary(text, length);
+      // A fresh file always starts with no query (just reset above) -
+      // pass '' directly rather than the possibly-stale `query` closure.
+      runSummary(text, length, '');
     } catch (err) {
       console.error(err);
       setStatus('error');
@@ -178,6 +189,7 @@ export function useDocumentProcessor() {
     setFileMeta(null);
     setExtractedText('');
     extractedTextRef.current = '';
+    setQueryState('');
     setResult(null);
   }, []);
 
@@ -189,9 +201,11 @@ export function useDocumentProcessor() {
     fileMeta,
     extractedText,
     length,
+    query,
     result,
     processFile,
     setLength,
+    setQuery,
     reset,
   };
 }

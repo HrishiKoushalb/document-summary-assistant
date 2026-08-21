@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, Copy, Check, Download, FileText, Image as ImageIcon, RotateCcw, ScanText } from 'lucide-react';
 import LengthControl from './LengthControl';
+import QueryControl from './QueryControl';
 
 function formatBytes(bytes) {
   if (!bytes && bytes !== 0) return '';
@@ -23,8 +24,11 @@ function buildTextFile(fileMeta, result) {
   return lines.join('\n');
 }
 
-export default function ResultView({ fileMeta, result, length, onLengthChange, extractedText, onReset }) {
+export default function ResultView({
+  fileMeta, result, length, onLengthChange, query, onQueryChange, extractedText, onReset,
+}) {
   const [showExtracted, setShowExtracted] = useState(false);
+  const [showRanking, setShowRanking] = useState(false);
   const [copied, setCopied] = useState(false);
   const isPdf = fileMeta?.type === 'application/pdf';
 
@@ -85,6 +89,11 @@ export default function ResultView({ fileMeta, result, length, onLengthChange, e
         </div>
       </div>
 
+      {/* Query focus */}
+      <div className="mt-3">
+        <QueryControl value={query} onChange={onQueryChange} />
+      </div>
+
       {/* Summary card */}
       <div className="mt-4 rounded-2xl border border-border bg-surface paper-texture px-6 py-7 sm:px-8 sm:py-9">
         <div className="flex items-center justify-between gap-3">
@@ -131,6 +140,46 @@ export default function ResultView({ fileMeta, result, length, onLengthChange, e
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Ranking transparency (collapsible) */}
+      {result.rankedSentences?.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-border bg-surface overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowRanking((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-3.5 text-left"
+          >
+            <span className="font-mono text-xs uppercase tracking-wider text-text-muted">
+              How this was ranked ({result.rankedSentences.length} sentences scored)
+            </span>
+            <ChevronDown
+              size={16}
+              className={`text-text-muted transition-transform ${showRanking ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {showRanking && (
+            <div className="max-h-96 overflow-y-auto border-t border-border bg-surface-well px-5 py-4 space-y-3">
+              {result.rankedSentences.map((r, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div
+                    className="mt-1.5 h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-border-soft"
+                    role="img"
+                    aria-label={`relevance score ${Math.round(r.score * 100)}%`}
+                  >
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${Math.round(r.score * 100)}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs leading-relaxed ${r.selected ? 'text-accent-deep font-medium' : 'text-text-faint'}`}>
+                    {r.sentence}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -44,7 +44,7 @@ export function splitSentences(rawText) {
   protectedText = protectedText.replace(/\.\.\./g, '<ELLIPSIS>');
 
   const rawSentences = protectedText
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9"'\u201C(])/)
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9"'“(])/)
     .map((s) => s.replace(/<DOT>/g, '.').replace(/<ELLIPSIS>/g, '...').trim())
     .filter(Boolean);
 
@@ -60,7 +60,9 @@ function tokenize(sentence) {
 }
 
 /**
- * Classic TextRank sentence similarity: normalized word overlap.
+ * Classic TextRank sentence similarity: normalized word overlap. Also
+ * reused for query relevance (Feature 1) - "how much does sentence A
+ * overlap with word set B" is the same question either way.
  */
 function similarity(wordsA, wordsB) {
   if (wordsA.length === 0 || wordsB.length === 0) return 0;
@@ -102,17 +104,35 @@ function countWords(str) {
   return m ? m.length : 0;
 }
 
+function normalize(values) {
+  const max = Math.max(...values);
+  if (!(max > 0)) return values.map(() => 0);
+  return values.map((v) => v / max);
+}
+
 const LENGTH_PRESETS = {
   short: { ratio: 0.15, min: 2, max: 5 },
   medium: { ratio: 0.3, min: 3, max: 10 },
   long: { ratio: 0.45, min: 5, max: 18 },
 };
 
+// How much a query pulls the ranking toward itself vs. plain TextRank
+// centrality, once both are normalized to the same 0-1 scale. Weighted
+// toward the query (0.65) because picking a query is an explicit signal
+// the user wants that topic surfaced - but centrality still gets a vote
+// so a barely-related sentence with heavy keyword overlap can't win
+// purely on a lucky word match.
+const QUERY_WEIGHT = 0.65;
+
 /**
- * Produces an extractive summary + key points from raw text.
+ * Produces an extractive summary + key points from raw text, optionally
+ * steered toward a query. Passing no query (or an empty/whitespace one)
+ * is a no-op for ranking - the result is identical to calling this
+ * without a third argument at all.
  *
  * @param {string} text
  * @param {'short'|'medium'|'long'} length
+ * @param {string} [query] - optional topic/keywords to bias sentence selection toward
  * @returns {{
  *   summary: string,
  *   keyPoints: string[],
@@ -121,15 +141,19 @@ const LENGTH_PRESETS = {
  *   originalWordCount: number,
  *   summaryWordCount: number,
  *   reductionPercent: number,
+ *   rankedSentences: { sentence: string, score: number, selected: boolean }[],
  * }}
  */
-export function summarize(text, length = 'medium') {
+export function summarize(text, length = 'medium', query = '') {
   const allSentences = splitSentences(text);
   const originalWordCount = countWords(text);
 
   if (allSentences.length === 0) {
     throw new Error('NO_TEXT');
   }
+
+  const queryWords = query ? tokenize(query) : [];
+  const hasQuery = queryWords.length > 0;
 
   // Candidate sentences: substantial enough to be worth ranking/selecting.
   const candidates = allSentences
@@ -149,6 +173,7 @@ export function summarize(text, length = 'medium') {
       originalWordCount,
       summaryWordCount: countWords(summary),
       reductionPercent: 0,
+      rankedSentences: pool.map((p) => ({ sentence: p.sentence, score: 1, selected: true })),
     };
   }
 
@@ -165,15 +190,30 @@ export function summarize(text, length = 'medium') {
 
   const scores = rankSentences(matrix);
 
+  // Ranking score used for selection: plain TextRank centrality, unless
+  // a query was given, in which case it's blended with query relevance.
+  // Both are normalized to 0-1 first so the blend weight actually means
+  // what it says (raw PageRank scores are tiny and on their own scale -
+  // mixing them with an unnormalized similarity score would let whichever
+  // happens to have bigger numbers dominate regardless of the weight).
+  let rankingScores = scores;
+  if (hasQuery) {
+    const queryRelevance = wordSets.map((words) => similarity(words, queryWords));
+    const normBase = normalize(scores);
+    const normQuery = normalize(queryRelevance);
+    rankingScores = normBase.map((b, i) => (1 - QUERY_WEIGHT) * b + QUERY_WEIGHT * normQuery[i]);
+  }
+
   const preset = LENGTH_PRESETS[length] || LENGTH_PRESETS.medium;
   const targetCount = Math.min(
     n,
     Math.max(preset.min, Math.min(preset.max, Math.round(n * preset.ratio)))
   );
 
-  const rankedIdx = pool.map((_, i) => i).sort((a, b) => scores[b] - scores[a]);
+  const rankedIdx = pool.map((_, i) => i).sort((a, b) => rankingScores[b] - rankingScores[a]);
 
   const selectedPoolIdx = rankedIdx.slice(0, targetCount).sort((a, b) => a - b);
+  const selectedSet = new Set(selectedPoolIdx);
   const summarySentences = selectedPoolIdx.map((i) => pool[i].sentence);
   const summary = summarySentences.join(' ');
 
@@ -185,6 +225,13 @@ export function summarize(text, length = 'medium') {
     ? Math.round((1 - summaryWordCount / originalWordCount) * 100)
     : 0;
 
+  const displayScores = normalize(rankingScores);
+  const rankedSentences = pool.map((p, i) => ({
+    sentence: p.sentence,
+    score: displayScores[i],
+    selected: selectedSet.has(i),
+  }));
+
   return {
     summary,
     keyPoints,
@@ -193,5 +240,6 @@ export function summarize(text, length = 'medium') {
     originalWordCount,
     summaryWordCount,
     reductionPercent: Math.max(0, reductionPercent),
+    rankedSentences,
   };
 }
